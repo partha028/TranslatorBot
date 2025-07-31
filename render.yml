@@ -7,4 +7,5 @@ services:
     envVars:
       - key: BOT_TOKEN
         value: YOUR_BOT_TOKEN
-    runtime: python3.10
+    runtime: python3.11.9
+    pythonVersion: 3.11.9
