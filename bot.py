@@ -1,59 +1,38 @@
-import os
+import logging
+import filetype
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 from googletrans import Translator
-from indic_transliteration.sanscript import transliterate, ITRANS, DEVANAGARI
 
+# Set up logging
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+
+# Instantiate the translator
 translator = Translator()
 
-def roman_to_hindi(text):
-    try:
-        return transliterate(text, ITRANS, DEVANAGARI)
-    except Exception:
-        return text
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Hello! Send me a message and I'll translate it to Hindi.")
 
-def start(update: Update, context: CallbackContext):
-    update.message.reply_text(
-        "Hi! Reply to any message with /translate to get English translation."
-    )
+async def translate_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    original_text = update.message.text
+    translated = translator.translate(original_text, dest='hi')
+    await update.message.reply_text(f"Translated:\n{translated.text}")
 
-def translate_command(update: Update, context: CallbackContext):
-    # Check if this message is a reply
-    if update.message.reply_to_message:
-        roman_text = update.message.reply_to_message.text
-        if not roman_text:
-            update.message.reply_text("⚠️ The replied message has no text to translate.")
-            return
-
-        try:
-            # Step 1: Transliterate Roman script to Hindi script
-            devanagari_text = roman_to_hindi(roman_text)
-
-            # Step 2: Translate from Hindi to English
-            translated = translator.translate(devanagari_text, src='hi', dest='en')
-
-            reply_text = f"🗣️ Original: {roman_text}\n🔤 Translation: {translated.text}"
-            update.message.reply_text(reply_text)
-        except Exception as e:
-            update.message.reply_text(f"⚠️ Translation failed: {str(e)}")
-    else:
-        update.message.reply_text("💬 Please reply to a message you want to translate.")
+# Example usage of filetype in your bot (optional for images)
+def is_image(file_path):
+    kind = filetype.guess(file_path)
+    return kind and kind.mime.startswith('image/')
 
 def main():
-    TOKEN = os.getenv("BOT_TOKEN")
-    if not TOKEN:
-        print("Error: BOT_TOKEN environment variable not set.")
-        return
+    app = ApplicationBuilder().token("8142191151:AAE4sjqeHNhP2Hk7UDsKpK8Jew-FTrqNkd0").build()
 
-    updater = Updater(TOKEN, use_context=True)
-    dp = updater.dispatcher
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, translate_message))
 
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("translate", translate_command))
+    app.run_polling()
 
-    print("🤖 Bot is running...")
-    updater.start_polling()
-    updater.idle()
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
